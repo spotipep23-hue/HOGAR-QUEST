@@ -1,0 +1,41 @@
+ÁMBITO,TAREA,PUNTOS
+COCINA,Recoger cocina después de desayunar,10
+,Recoger cocina después de comer,10
+,Recoger cocina después de cenar,10
+,Poner lavavajillas,5
+,Sacar lavavajillas,5
+,Hacer cena/comida,15
+,Fregar suelo cocina,5
+,Bajar basura,5
+,Hacer compra,20
+BAÑO,Limpiar baño,15
+,Limpieza completa arenero,10
+,Limpieza parcial arenero,5
+,Adecentar baño,5
+,Barrer y fregar suelo,5
+SALÓN,Dejarlo recogido por la noche,5
+,Dejarlo recogido después de comer,5
+,Quitar polvo,10
+,Limpieza completa salón,20
+,Pasar aspirador,5
+,Sacudir cojines,5
+HABITACIÓN,Hacer cama,5
+,Recoger ropa,5
+,Pasar aspirador,5
+,Quitar polvo,5
+HABITACIÓN ESTUDIO,Despejar cama,5
+,Ordenar ropa armario,5
+,Recoger mesa,5
+,Pasar aspirador,5
+,Pasar polvo,5
+GENERAL,Fregar suelos,20
+,Pasar aspirador a toda la casa,20
+,Poner colada,5
+,Tender colada,10
+,Recoger colada tendal,10
+,Guardar ropa,10
+,Limpiar puertas,20
+,Limpiar ventanas,20
+RITA,Poner comida,5
+,Poner agua fresca,5
+,Mantener limpia su zona - desinfectar,10
