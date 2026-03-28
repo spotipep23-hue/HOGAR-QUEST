@@ -6,7 +6,7 @@ import datetime
 st.set_page_config(layout="centered", page_title="Hogar Quest Cloud", page_icon="☁️")
 
 # --- CONEXIÓN A GOOGLE SHEETS ---
-url = https://docs.google.com/spreadsheets/d/1g90SMibEDEW4_d4d1C2R08SzMfP6KboMtEo-XuDUi1s/edit?usp=sharing
+url = "https://docs.google.com/spreadsheets/d/1g90SMibEDEW4_d4d1C2R08SzMfP6KboMtEo-XuDUi1s/edit?usp=sharing"
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 # --- CARGAR TAREAS LOCALES (Tu CSV) ---
