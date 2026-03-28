@@ -21,7 +21,7 @@ def cargar_maestro():
 df_maestro = cargar_maestro()
 
 st.title("⚔️ HOGAR QUEST COMPARTIDO")
-usuario = st.radio("¿Quién eres?", ["Jugador 1", "Jugador 2"], horizontal=True)
+usuario = st.radio("¿Quién eres?", ["Sandra", "Juan"], horizontal=True)
 
 tab1, tab2 = st.tabs(["🎮 Misiones", "📊 Ranking"])
 
