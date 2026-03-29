@@ -1,12 +1,14 @@
 import streamlit as st
-from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import datetime
 
-st.set_page_config(layout="centered", page_title="Hogar Quest Cloud", page_icon="☁️")
+st.set_page_config(layout="centered", page_title="Hogar Quest", page_icon="⚔️")
 
+# --- 1. INICIALIZAR LA MEMORIA DEL DÍA ---
+if 'historial' not in st.session_state:
+    st.session_state.historial = []
 
-# --- CARGAR TAREAS LOCALES (Tu CSV) ---
+# --- 2. CARGAR TAREAS DEL CSV ---
 @st.cache_data
 def cargar_maestro():
     df = pd.read_csv("tareas.xlsx - Hoja1.csv")
@@ -16,60 +18,55 @@ def cargar_maestro():
 
 df_maestro = cargar_maestro()
 
-# --- INTERFAZ ---
-st.title("⚔️ HOGAR QUEST COMPARTIDO")
+# --- 3. INTERFAZ Y MARCADOR ---
+st.title("⚔️ HOGAR QUEST")
 
-# Selector de usuario para saber quién suma
-usuario = st.radio("¿Quién eres?", ["Jugador 1", "Jugador 2"], horizontal=True)
+# Calcular puntos sumando el historial de la memoria
+puntos_totales = sum(tarea['Puntos'] for tarea in st.session_state.historial)
 
-tab1, tab2 = st.tabs(["🎮 Misiones", "📊 Ranking"])
+# Marcador superior
+st.metric("🏆 Puntos de Hoy", f"{puntos_totales} XP")
+st.divider()
+
+# --- 4. PESTAÑAS ---
+tab1, tab2 = st.tabs(["🎮 Misiones", "📜 Histórico y Reset"])
 
 with tab1:
-    ambitos = df_maestro['ÁMBITO'].unique()
-    for ambito in ambitos:
+    st.subheader("Misiones Disponibles")
+    for ambito in df_maestro['ÁMBITO'].unique():
         with st.expander(f"📍 {ambito}"):
-            tareas_ambito = df_maestro[df_maestro['ÁMBITO'] == ambito]
-            for idx, row in tareas_ambito.iterrows():
+            tareas = df_maestro[df_maestro['ÁMBITO'] == ambito]
+            for idx, row in tareas.iterrows():
                 col_t, col_p, col_b = st.columns([3, 1, 1])
                 col_t.write(row['TAREA'])
-                col_p.write(f"{row['PUNTOS']} XP")
+                col_p.write(f"**{row['PUNTOS']} XP**")
+                
                 if col_b.button("✅", key=f"btn_{idx}"):
-                    # Crear nueva fila
-                    ahora = datetime.datetime.now()
-                    nueva_fila = pd.DataFrame([{
-                        "Fecha": ahora.strftime("%Y-%m-%d"),
-                        "Semana": ahora.isocalendar()[1],
-                        "Mes": ahora.strftime("%Y-%m"),
+                    # Guardar la tarea en la memoria temporal
+                    st.session_state.historial.append({
+                        "Hora": datetime.datetime.now().strftime("%H:%M"),
                         "Ámbito": ambito,
                         "Tarea": row['TAREA'],
-                        "Puntos": row['PUNTOS'],
-                        "Usuario": usuario
-                    }])
-                    
-                    # Leer datos actuales, añadir nuevo y guardar
-                    data_actual = conn.read(spreadsheet=url)
-                    updated_df = pd.concat([data_actual, nueva_fila], ignore_index=True)
-                    conn.update(spreadsheet=url, data=updated_df)
-                    
-                    st.success(f"¡{row['PUNTOS']} XP para {usuario}!")
-                    st.balloons()
-                    st.cache_data.clear() # Limpiar cache para ver datos nuevos
+                        "Puntos": row['PUNTOS']
+                    })
+                    st.success(f"¡{row['PUNTOS']} XP conseguidos!")
+                    st.balloons()  # Los globos clásicos
+                    st.rerun()     # Recarga para actualizar el marcador arriba
 
 with tab2:
-    try:
-        df_h = conn.read(spreadsheet=url)
-        if df_h.empty:
-            st.info("El marcador está a cero. ¡A trabajar!")
-        else:
-            # Ranking por usuario
-            st.subheader("🏆 Marcador Global")
-            ranking = df_h.groupby("Usuario")["Puntos"].sum().reset_index()
-            st.table(ranking)
-
-            # Puntos por semana
-            st.subheader("📅 Puntos por Semana")
-            df_semana = df_h.groupby(["Semana", "Usuario"])["Puntos"].sum().unstack().fillna(0)
-            st.bar_chart(df_semana)
-            
-    except:
-        st.warning("Aún no hay datos en la nube.")
+    st.subheader("📜 Histórico de Hoy")
+    
+    if len(st.session_state.historial) == 0:
+        st.info("Aún no has completado ninguna misión hoy.")
+    else:
+        # Mostrar tabla con el registro de lo que se ha hecho
+        df_historial = pd.DataFrame(st.session_state.historial)
+        st.dataframe(df_historial, use_container_width=True)
+    
+    st.divider()
+    st.warning("⚠️ Al final del día, pulsa aquí para volver a empezar.")
+    
+    # Botón de Reset
+    if st.button("🔄 Resetear Día (Volver a 0)"):
+        st.session_state.historial = []
+        st.rerun()
