@@ -4,7 +4,9 @@ COCINA,Recoger cocina después de desayunar,10
 ,Recoger cocina después de cenar,10
 ,Poner lavavajillas,5
 ,Sacar lavavajillas,5
-,Hacer cena/comida,15
+,Hacer desayuno,5
+,Hacer comida,15
+,Hacer cena,10
 ,Fregar suelo cocina,5
 ,Bajar basura,5
 ,Hacer compra,20
@@ -15,6 +17,7 @@ BAÑO,Limpiar baño,15
 ,Barrer y fregar suelo,5
 SALÓN,Dejarlo recogido por la noche,5
 ,Dejarlo recogido después de comer,5
+,Dejarlo recogido después de desayunar,5
 ,Quitar polvo,10
 ,Limpieza completa salón,20
 ,Pasar aspirador,5
