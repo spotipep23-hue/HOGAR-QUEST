@@ -1,81 +1,112 @@
 import streamlit as st
 import pandas as pd
 import datetime
-import requests
 
-st.set_page_config(layout="centered", page_title="Hogar Quest", page_icon="⚔️")
+# --- CONFIGURACIÓN DE LA PÁGINA ---
+st.set_page_config(layout="centered", page_title="Hogar Quest", page_icon="🏠")
 
-# --- 1. CONFIGURACIÓN ---
-URL_GSHEET = "https://docs.google.com/spreadsheets/d/1g90SMibEDEW4_d4d1C2R08SzMfP6KboMtEo-XuDUi1s/edit?usp=sharing"
-URL_SCRIPT = "https://script.google.com/macros/s/AKfycbxIsargp4yKpKomsxPvm12346hDEOQd_foda9tAaD30h2qMvp7JT4DH9Ynor4_Q9KcW/exec"
+# --- ESTILOS CSS ---
+st.markdown("""
+<style>
+    .stApp { background-color: #f8f9fa; }
+    .main-title { color: #2e7d32; text-align: center; font-family: monospace; font-weight: bold; }
+    .score-box { background-color: #ffffff; padding: 20px; border-radius: 15px; box-shadow: 2px 2px 10px rgba(0,0,0,0.1); text-align: center; border: 2px solid #2e7d32; margin-bottom: 20px;}
+</style>
+""", unsafe_allow_html=True)
 
-# --- 2. FUNCIONES DE CARGA (Con caché para ir rápido) ---
-@st.cache_data(ttl=60) # Solo actualiza los datos de la nube cada 60 segundos
-def cargar_datos_nube(url):
-    csv_url = url.replace('/edit?usp=sharing', '/export?format=csv').replace('/edit#gid=', '/export?format=csv&gid=')
+# --- TÍTULO ---
+st.markdown("<h1 class='main-title'>⚔️ HOGAR QUEST ⚔️<br>La Batalla del Orden</h1>", unsafe_allow_html=True)
+
+# --- 1. CARGAR DATOS DESDE TU CSV ---
+@st.cache_data
+def cargar_tareas():
     try:
-        return pd.read_csv(csv_url)
-    except:
+        # Leemos el archivo CSV
+        df = pd.read_csv("tareas.xlsx - Hoja1.csv")
+        
+        # 1. Rellenar los "Ámbitos" vacíos (por las celdas combinadas de Excel)
+        df['ÁMBITO'] = df['ÁMBITO'].ffill()
+        
+        # 2. Si alguna tarea no tiene puntos, le ponemos 5 por defecto y aseguramos que sea número
+        df['PUNTOS'] = pd.to_numeric(df['PUNTOS'], errors='coerce').fillna(5).astype(int)
+        
+        # 3. Limpiamos nombres de columnas por si acaso tienen espacios
+        df.columns = df.columns.str.strip()
+        
+        return df
+    except Exception as e:
+        st.error(f"Error al cargar el archivo CSV. Asegúrate de que se llama 'tareas.xlsx - Hoja1.csv' y está en la misma carpeta. Error: {e}")
         return pd.DataFrame()
 
-@st.cache_data
-def cargar_maestro():
-    df = pd.read_csv("tareas.xlsx - Hoja1.csv")
-    df['ÁMBITO'] = df['ÁMBITO'].ffill()
-    df['PUNTOS'] = pd.to_numeric(df['PUNTOS'], errors='coerce').fillna(5).astype(int)
-    return df
+df_tareas = cargar_tareas()
 
-# --- 3. LÓGICA DE DATOS ---
-df_h = cargar_datos_nube(URL_GSHEET)
-df_maestro = cargar_maestro()
-hoy = datetime.datetime.now().strftime("%Y-%m-%d")
+# --- 2. GESTIÓN DEL ESTADO (Puntuación e Historial) ---
+if 'total_puntos' not in st.session_state:
+    st.session_state.total_puntos = 0
+if 'historial_tareas' not in st.session_state:
+    st.session_state.historial_tareas = []
 
-# --- 4. INTERFAZ ---
-st.title("⚔️ HOGAR QUEST")
+# --- 3. ÁREA DE MARCADOR ---
+if not df_tareas.empty:
+    st.markdown("<div class='score-box'>", unsafe_allow_html=True)
+    c1, c2 = st.columns([1, 2])
+    with c1:
+        st.markdown("## 🏆\nPuntos Actuales")
+    with c2:
+        st.markdown(f"<h1 style='color: #2e7d32; font-size: 50px; margin:0;'>{st.session_state.total_puntos} XP</h1>", unsafe_allow_html=True)
+        
+    # Sistema de Rangos
+    rango = "Novato del Orden 🥉"
+    if st.session_state.total_puntos >= 50: rango = "Aprendiz de la Limpieza 🥈"
+    if st.session_state.total_puntos >= 150: rango = "Guerrero del Hogar 🥇"
+    if st.session_state.total_puntos >= 300: rango = "Maestro del Esponja 💎"
+    if st.session_state.total_puntos >= 500: rango = "Leyenda Suprema (Nivel Dios) 👑"
+        
+    st.markdown(f"**Rango Actual:** {rango}")
+    st.markdown("</div>", unsafe_allow_html=True)
 
-# Marcador superior (Calculado localmente para que no pete)
-if not df_h.empty and 'Fecha' in df_h.columns:
-    df_hoy = df_h[df_h['Fecha'] == hoy]
-    p1 = df_hoy[df_hoy['Usuario'] == "Sandra"]['Puntos'].sum()
-    p2 = df_hoy[df_hoy['Usuario'] == "Juan"]['Puntos'].sum()
+    # --- 4. ÁREA DE MISIONES (Agrupadas por Ámbito) ---
+    st.subheader("🗺️ Mapa de Misiones")
     
-    c1, c2 = st.columns(2)
-    c1.metric("Sandra (Hoy)", f"{p1} XP")
-    c2.metric("Juan (Hoy)", f"{p2} XP")
-else:
-    st.info("🎯 ¡Marcador a 0! Completa una tarea para empezar el día.")
-
-st.divider()
-user = st.radio("¿Quién eres?", ["Sandra", "Juan"], horizontal=True)
-
-t1, t2 = st.tabs(["🎮 Misiones", "📊 Ranking"])
-
-with t1:
-    for ambito in df_maestro['ÁMBITO'].unique():
+    # Agrupamos por ámbito (Cocina, Baño, Rita, etc.)
+    ambitos = df_tareas['ÁMBITO'].dropna().unique()
+    
+    for ambito in ambitos:
+        # Usamos un "expander" (acordeón) para que no sea una lista gigante
         with st.expander(f"📍 {ambito}"):
-            tareas = df_maestro[df_maestro['ÁMBITO'] == ambito]
-            for idx, row in tareas.iterrows():
-                col_t, col_p, col_b = st.columns([3, 1, 1])
-                col_t.write(row['TAREA'])
-                col_p.write(f"{row['PUNTOS']} XP")
+            tareas_ambito = df_tareas[df_tareas['ÁMBITO'] == ambito]
+            
+            for index, row in tareas_ambito.iterrows():
+                col_text, col_pts, col_btn = st.columns([3, 1, 1])
                 
-                if col_b.button("✅", key=f"btn_{idx}"):
-                    params = {
-                        "Fecha": hoy,
-                        "Semana": datetime.datetime.now().isocalendar()[1],
-                        "Mes": datetime.datetime.now().strftime("%Y-%m"),
-                        "Ambito": ambito, "Tarea": row['TAREA'], "Puntos": row['PUNTOS'], "Usuario": user
-                    }
-                    # Enviamos el punto
-                    requests.get(URL_SCRIPT, params=params)
-                    st.success(f"¡Guardado!")
-                    # Limpiamos caché para que al recargar lea el nuevo punto
-                    st.cache_data.clear()
-                    st.rerun()
+                with col_text:
+                    st.write(f"**{row['TAREA']}**")
+                with col_pts:
+                    st.markdown(f"<span style='color:#2e7d32; font-weight:bold;'>+{row['PUNTOS']} XP</span>", unsafe_allow_html=True)
+                with col_btn:
+                    # Botón para completar
+                    if st.button("Completar", key=f"btn_{index}"):
+                        st.session_state.total_puntos += row['PUNTOS']
+                        hora_actual = datetime.datetime.now().strftime("%H:%M")
+                        st.session_state.historial_tareas.insert(0, {
+                            "Hora": hora_actual,
+                            "Zona": ambito,
+                            "Misión": row['TAREA'],
+                            "XP": row['PUNTOS']
+                        })
+                        st.rerun()
 
-with t2:
-    if not df_h.empty:
-        st.subheader("🏆 Global")
-        st.table(df_h.groupby("Usuario")["Puntos"].sum())
-        st.subheader("📈 Semanal")
-        st.bar_chart(df_h.groupby(["Semana", "Usuario"])["Puntos"].sum().unstack().fillna(0))
+    st.write("---")
+
+    # --- 5. HISTORIAL DE BATALLA ---
+    st.subheader("📜 Historial de Batalla (Hoy)")
+    if not st.session_state.historial_tareas:
+        st.info("Aún no has completado ninguna misión hoy. ¡Ve a por tu primera victoria!")
+    else:
+        df_historial = pd.DataFrame(st.session_state.historial_tareas)
+        st.dataframe(df_historial, use_container_width=True, hide_index=True)
+        
+        if st.button("🔄 Terminar Día (Reiniciar Marcador)"):
+            st.session_state.total_puntos = 0
+            st.session_state.historial_tareas = []
+            st.rerun()
